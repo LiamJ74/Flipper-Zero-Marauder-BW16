@@ -40,9 +40,12 @@ static int32_t app_thread_callback(void* ctx) {
 }
 
 // Callback UART réception
-static void uart_rx_callback(uint8_t byte, void* ctx) {
+static void uart_rx_callback(FuriHalSerialHandle* handle, FuriHalSerialRxEvent event, void* ctx) {
     UartHandler* handler = ctx;
-    uart_handler_push(handler, byte);
+    if(event & FuriHalSerialRxEventData) {
+        uint8_t data = furi_hal_serial_async_rx(handle);
+        uart_handler_push(handler, data);
+    }
 }
 
 int32_t app_main(void* p) {

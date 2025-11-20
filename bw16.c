@@ -6,10 +6,7 @@ extern UartHandler global_uart; // si tu veux, on peut passer lâ€™UART en paramÃ
 
 static void bw16_send_raw(FuriHalSerialHandle* handle, const uint8_t* data, uint8_t len) {
     if(!handle) return;
-
-    for(uint8_t i = 0; i < len; i++) {
-        furi_hal_serial_tx(handle, data[i]);
-    }
+    furi_hal_serial_tx(handle, data, len);
 }
 
 void bw16_send_scan_request(FuriHalSerialHandle* handle) {
