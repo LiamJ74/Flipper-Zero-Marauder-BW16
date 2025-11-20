@@ -1,0 +1,10 @@
+App(
+    appid="5g_rebuild",
+    name="5G WiFi Deauther Rebuild",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="app_5g_rebuild",
+    sources=[
+        "main.c",
+        "draw.c",
+    ],
+)
