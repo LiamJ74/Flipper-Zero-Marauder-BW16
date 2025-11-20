@@ -17,6 +17,7 @@ void uart_handler_push(UartHandler* handler, uint8_t byte) {
 void uart_handler_set_serial(UartHandler* handler, FuriHalSerialHandle* serial) {
     handler->serial = serial;
     if(serial) {
-        furi_hal_serial_async_rx(serial); // démarre la lecture
+        // furi_hal_serial_async_rx_start should be called by the owner of the handle
+        // because it requires a callback.
     }
 }

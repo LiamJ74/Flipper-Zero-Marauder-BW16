@@ -1,6 +1,7 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <furi_hal_serial.h>
+#include <furi_hal_serial_control.h>
 #include <gui/gui.h>
 #include <input/input.h>
 
@@ -60,7 +61,7 @@ int32_t app_main(void* p) {
     uart_handler_init(&app->uart);
 
     // Open UART
-    app->serial = furi_hal_serial_open(FuriHalSerialIdUsart);
+    app->serial = furi_hal_serial_control_acquire(FuriHalSerialIdUsart);
     if(!app->serial) {
         FURI_LOG_E("5G", "UART open failed");
         furi_mutex_free(app->mutex);
@@ -69,8 +70,8 @@ int32_t app_main(void* p) {
     }
 
     // Config callback UART et démarrer réception async
-    furi_hal_serial_set_callback(app->serial, uart_rx_callback, &app->uart);
-    furi_hal_serial_async_rx(app->serial);
+    furi_hal_serial_init(app->serial, 115200);
+    furi_hal_serial_async_rx_start(app->serial, uart_rx_callback, &app->uart, false);
 
     // Création thread principal
     app->thread = furi_thread_alloc();
@@ -103,7 +104,8 @@ int32_t app_main(void* p) {
     furi_thread_free(app->thread);
 
     // Fermer UART
-    furi_hal_serial_close(app->serial);
+    furi_hal_serial_deinit(app->serial);
+    furi_hal_serial_control_release(app->serial);
 
     // Libération mutex et mémoire
     furi_mutex_free(app->mutex);

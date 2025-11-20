@@ -4,8 +4,7 @@
 
 extern UartHandler global_uart; // si tu veux, on peut passer l’UART en paramètre
 
-static void bw16_send_raw(const uint8_t* data, uint8_t len) {
-    FuriHalSerialHandle* handle = furi_hal_serial_get(FuriHalSerialIdUsart);
+static void bw16_send_raw(FuriHalSerialHandle* handle, const uint8_t* data, uint8_t len) {
     if(!handle) return;
 
     for(uint8_t i = 0; i < len; i++) {
@@ -13,17 +12,17 @@ static void bw16_send_raw(const uint8_t* data, uint8_t len) {
     }
 }
 
-void bw16_send_scan_request(void) {
+void bw16_send_scan_request(FuriHalSerialHandle* handle) {
     const uint8_t pkt[] = {0xA1, 0x01};
-    bw16_send_raw(pkt, sizeof(pkt));
+    bw16_send_raw(handle, pkt, sizeof(pkt));
 }
 
-void bw16_send_deauth(uint8_t slot) {
+void bw16_send_deauth(FuriHalSerialHandle* handle, uint8_t slot) {
     const uint8_t pkt[] = {0xA2, slot};
-    bw16_send_raw(pkt, sizeof(pkt));
+    bw16_send_raw(handle, pkt, sizeof(pkt));
 }
 
-void bw16_send_get_last_scan(void) {
+void bw16_send_get_last_scan(FuriHalSerialHandle* handle) {
     const uint8_t pkt[] = {0xA3, 0x00};
-    bw16_send_raw(pkt, sizeof(pkt));
+    bw16_send_raw(handle, pkt, sizeof(pkt));
 }
