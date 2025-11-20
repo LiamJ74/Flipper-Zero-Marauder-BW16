@@ -48,7 +48,7 @@ static void uart_rx_callback(FuriHalSerialHandle* handle, FuriHalSerialRxEvent e
     }
 }
 
-int32_t app_main(void* p) {
+int32_t app_5g_rebuild(void* p) {
     UNUSED(p);
 
     // Allocation App
