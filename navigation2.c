@@ -1,4 +1,5 @@
 #include "navigation2.h"
+#include "bw16.h"
 #include <string.h>
 
 void navigation2_init(Navigation2* nav) {
@@ -6,6 +7,9 @@ void navigation2_init(Navigation2* nav) {
     nav->selected = 0;
     nav->uart_line[0] = '\0';
     nav->uart_new_data = false;
+    nav->req_scan = false;
+    nav->req_last_scan = false;
+    nav->req_deauth = false;
 }
 
 bool navigation2_running(Navigation2* nav) {
@@ -28,7 +32,9 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
             break;
 
         case InputKeyOk:
-            // rien pour l'instant
+            if(nav->selected == 0) nav->req_scan = true;
+            if(nav->selected == 1) nav->req_last_scan = true;
+            if(nav->selected == 2) nav->req_deauth = true;
             break;
 
         default:
@@ -38,6 +44,20 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
 }
 
 void navigation2_update(Navigation2* nav, UartHandler* uart) {
+    if(nav->req_scan) {
+        bw16_send_scan_request(uart->serial);
+        nav->req_scan = false;
+    }
+    if(nav->req_last_scan) {
+        bw16_send_get_last_scan(uart->serial);
+        nav->req_last_scan = false;
+    }
+    if(nav->req_deauth) {
+        // Example slot 0 for now
+        bw16_send_deauth(uart->serial, 0);
+        nav->req_deauth = false;
+    }
+
     // Lire les données UART disponibles
     uint8_t byte;
     while(uart_handler_pop(uart, &byte)) {

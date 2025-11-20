@@ -4,9 +4,5 @@
 #include <gui/view_port.h>
 #include <gui/canvas.h>
 
-typedef struct {
-    int selected;
-} DrawState;
-
-void draw_init(DrawState* state);
+// We use Navigation2 as state context
 void draw_callback(Canvas* canvas, void* ctx);

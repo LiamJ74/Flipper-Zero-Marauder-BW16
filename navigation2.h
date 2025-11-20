@@ -9,6 +9,9 @@ typedef struct {
     uint8_t selected;
     char uart_line[128];
     bool uart_new_data;
+    bool req_scan;
+    bool req_last_scan;
+    bool req_deauth;
 } Navigation2;
 
 void navigation2_init(Navigation2* nav);
