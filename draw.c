@@ -47,10 +47,10 @@ void draw_callback(Canvas* canvas, void* ctx) {
                 canvas_invert_color(canvas);
             }
 
-            char buf[64];
+            char buf[128];
             WifiNetwork* net = &nav->wifi_data.list[idx];
             // Format: "SSID (RSSI)"
-            snprintf(buf, sizeof(buf), "%s (%d)", net->ssid, net->rssi);
+            snprintf(buf, sizeof(buf), "%.32s (%d)", net->ssid, net->rssi);
             canvas_draw_str(canvas, 2, y, buf);
 
             if(idx == nav->selected_index) {
