@@ -2,6 +2,15 @@
 #include "bw16.h"
 #include "json_parser.h"
 #include <string.h>
+#include <stdlib.h>
+
+// Comparator for RSSI sorting (descending)
+static int compare_rssi(const void* a, const void* b) {
+    const WifiNetwork* netA = a;
+    const WifiNetwork* netB = b;
+    // Higher RSSI (closer to 0) is better. e.g. -50 > -90
+    return netB->rssi - netA->rssi;
+}
 
 void navigation2_init(Navigation2* nav) {
     memset(nav, 0, sizeof(Navigation2));
@@ -177,6 +186,14 @@ void navigation2_update(Navigation2* nav, UartHandler* uart) {
 
     if(nav->state == NavStateScanning) {
         if(!nav->wifi_data.list_open && nav->wifi_data.count > 0) {
+             // Sort by RSSI descending
+             qsort(nav->wifi_data.list, nav->wifi_data.count, sizeof(WifiNetwork), compare_rssi);
+
+             // Keep top 10
+             if(nav->wifi_data.count > 10) {
+                 nav->wifi_data.count = 10;
+             }
+
              nav->state = NavStateList;
              nav->selected_index = 0;
              nav->scroll_offset = 0;

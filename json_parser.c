@@ -10,7 +10,7 @@ bool json_parse_line(WifiApp* app, const char* line) {
     if(!app || !line) return false;
 
     // Début d’une liste JSON
-    if(strcmp(line, "[") == 0) {
+    if(strstr(line, "[") != NULL) {
         app->count = 0;
         app->list_open = true;
         FURI_LOG_I("5G", "Start list");
@@ -18,7 +18,7 @@ bool json_parse_line(WifiApp* app, const char* line) {
     }
 
     // Fin d’une liste JSON
-    if(strcmp(line, "]") == 0) {
+    if(strstr(line, "]") != NULL) {
         app->list_open = false;
         FURI_LOG_I("5G", "End list, %zu networks", app->count);
         return true;
