@@ -16,23 +16,32 @@ typedef struct {
     FuriMutex* mutex;
     FuriThread* thread;
     FuriHalSerialHandle* serial;
+    FuriMessageQueue* event_queue;
 } App;
 
 // Input callback pour navigation
 static void input_callback(InputEvent* event, void* ctx) {
     App* app = ctx;
-    navigation2_input(&app->nav, event);
+    furi_message_queue_put(app->event_queue, event, FuriWaitForever);
 }
 
 // Thread principal de l'application
 static int32_t app_thread_callback(void* ctx) {
     App* app = ctx;
+    InputEvent event;
 
     while(navigation2_running(&app->nav)) {
-        furi_delay_ms(10);
+        // Wait for event or timeout for update loop
+        FuriStatus status = furi_message_queue_get(app->event_queue, &event, 50);
 
         furi_mutex_acquire(app->mutex, FuriWaitForever);
+
+        if(status == FuriStatusOk) {
+            navigation2_input(&app->nav, &event);
+        }
+
         navigation2_update(&app->nav, &app->uart);
+
         furi_mutex_release(app->mutex);
     }
 
@@ -56,6 +65,7 @@ int32_t app_5g_rebuild(void* p) {
     if(!app) return 255;
 
     app->mutex = furi_mutex_alloc(FuriMutexTypeNormal);
+    app->event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));
 
     // Init Navigation
     navigation2_init(&app->nav);
@@ -111,6 +121,7 @@ int32_t app_5g_rebuild(void* p) {
     furi_hal_serial_control_release(app->serial);
 
     // Libération mutex et mémoire
+    furi_message_queue_free(app->event_queue);
     furi_mutex_free(app->mutex);
     free(app);
 
