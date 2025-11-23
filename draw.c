@@ -36,27 +36,31 @@ void draw_callback(Canvas* canvas, void* ctx) {
         canvas_draw_line(canvas, 0, 14, 127, 14);
         canvas_set_font(canvas, FontSecondary);
 
-        int y = 26;
         size_t count = nav->wifi_data.count;
-        for(int i = 0; i < 5; i++) {
-            int idx = nav->scroll_offset + i;
-            if(idx >= (int)count) break;
+        if(count == 0) {
+            canvas_draw_str(canvas, 10, 40, "No networks found.");
+        } else {
+            int y = 26;
+            for(int i = 0; i < 5; i++) {
+                int idx = nav->scroll_offset + i;
+                if(idx >= (int)count) break;
 
-            if(idx == nav->selected_index) {
-                canvas_draw_box(canvas, 0, y - 8, 128, 10);
-                canvas_invert_color(canvas);
+                if(idx == nav->selected_index) {
+                    canvas_draw_box(canvas, 0, y - 8, 128, 10);
+                    canvas_invert_color(canvas);
+                }
+
+                char buf[128];
+                WifiNetwork* net = &nav->wifi_data.list[idx];
+                // Format: "SSID (RSSI)"
+                snprintf(buf, sizeof(buf), "%.32s (%d)", net->ssid, net->rssi);
+                canvas_draw_str(canvas, 2, y, buf);
+
+                if(idx == nav->selected_index) {
+                    canvas_invert_color(canvas);
+                }
+                y += 10;
             }
-
-            char buf[128];
-            WifiNetwork* net = &nav->wifi_data.list[idx];
-            // Format: "SSID (RSSI)"
-            snprintf(buf, sizeof(buf), "%.32s (%d)", net->ssid, net->rssi);
-            canvas_draw_str(canvas, 2, y, buf);
-
-            if(idx == nav->selected_index) {
-                canvas_invert_color(canvas);
-            }
-            y += 10;
         }
 
     } else if(nav->state == NavStateOptions) {

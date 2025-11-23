@@ -33,6 +33,7 @@ typedef struct {
     bool req_last_scan;
     bool req_deauth;
     uint8_t deauth_slot;
+    uint32_t scan_start_tick;
 } Navigation2;
 
 void navigation2_init(Navigation2* nav);

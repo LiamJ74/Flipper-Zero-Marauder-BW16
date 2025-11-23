@@ -2,14 +2,21 @@
 #include "bw16.h"
 #include "json_parser.h"
 #include <string.h>
-#include <stdlib.h>
 
-// Comparator for RSSI sorting (descending)
-static int compare_rssi(const void* a, const void* b) {
-    const WifiNetwork* netA = a;
-    const WifiNetwork* netB = b;
-    // Higher RSSI (closer to 0) is better. e.g. -50 > -90
-    return netB->rssi - netA->rssi;
+// Simple sorting helper (Bubble Sort for simplicity on small array)
+static void sort_networks_by_rssi(WifiNetwork* list, size_t count) {
+    if(count < 2) return;
+
+    for(size_t i = 0; i < count - 1; i++) {
+        for(size_t j = 0; j < count - i - 1; j++) {
+            // Higher RSSI (closer to 0) comes first. e.g. -50 > -90
+            if(list[j].rssi < list[j + 1].rssi) {
+                WifiNetwork temp = list[j];
+                list[j] = list[j + 1];
+                list[j + 1] = temp;
+            }
+        }
+    }
 }
 
 void navigation2_init(Navigation2* nav) {
@@ -44,11 +51,13 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
                 nav->state = NavStateScanning;
                 nav->req_scan = true;
                 nav->wifi_data.count = 0; // Clear list
+                nav->scan_start_tick = furi_get_tick();
             } else if(nav->selected_index == 1) {
                 // Last scan
                 nav->state = NavStateScanning; // Use scanning state while waiting data
                 nav->req_last_scan = true;
                 nav->wifi_data.count = 0;
+                nav->scan_start_tick = furi_get_tick();
             }
             break;
         default: break;
@@ -185,9 +194,26 @@ void navigation2_update(Navigation2* nav, UartHandler* uart) {
     // The parser handles state. Maybe we just wait for a timeout or user interaction if list is empty.
 
     if(nav->state == NavStateScanning) {
-        if(!nav->wifi_data.list_open && nav->wifi_data.count > 0) {
+        bool timeout = (furi_get_tick() - nav->scan_start_tick) > 10000;
+        // Check if list closed (scan finished) OR timeout
+        // Also ensure we at least started receiving something (list_open was true at some point?)
+        // The parser logic sets list_open=true on '[' and false on ']'.
+        // If we receive "[]", list_open goes true then false.
+        // We can check if list_open is false. But initially it is false too.
+        // We need a flag "scan_started_receiving" maybe?
+        // Or just rely on timeout if list is empty.
+        // But if we received ']', list_open is false.
+        // Let's assume if count > 0 and !list_open, we are good.
+        // OR if timeout.
+
+        // Improvement: we can check if we received ANY data?
+        // Let's just use timeout for "0 networks" case, OR if we detect the end of list.
+        // Ideally json_parser sets a "finished" flag.
+        // But for now:
+
+        if((!nav->wifi_data.list_open && nav->wifi_data.count > 0) || timeout) {
              // Sort by RSSI descending
-             qsort(nav->wifi_data.list, nav->wifi_data.count, sizeof(WifiNetwork), compare_rssi);
+             sort_networks_by_rssi(nav->wifi_data.list, nav->wifi_data.count);
 
              // Keep top 10
              if(nav->wifi_data.count > 10) {
