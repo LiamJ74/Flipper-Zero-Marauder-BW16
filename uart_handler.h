@@ -12,4 +12,5 @@ typedef struct {
 
 void uart_handler_init(UartHandler* handler);
 void uart_handler_push(UartHandler* handler, uint8_t byte);
+bool uart_handler_pop(UartHandler* handler, uint8_t* byte);
 void uart_handler_set_serial(UartHandler* handler, FuriHalSerialHandle* serial);

@@ -6,5 +6,9 @@ App(
     sources=[
         "main.c",
         "draw.c",
+        "bw16.c",
+        "navigation2.c",
+        "uart_handler.c",
+        "json_parser.c",
     ],
 )
