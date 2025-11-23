@@ -22,7 +22,7 @@ typedef struct {
 // Input callback pour navigation
 static void input_callback(InputEvent* event, void* ctx) {
     App* app = ctx;
-    furi_message_queue_put(app->event_queue, event, FuriWaitForever);
+    furi_message_queue_put(app->event_queue, event, 0);
 }
 
 // Thread principal de l'application
