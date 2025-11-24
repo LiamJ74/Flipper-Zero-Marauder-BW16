@@ -1,3 +1,5 @@
+# WIP
+
 # Flipper Zero 5G Rebuild (BW16 Marauder)
 
 This application is a dedicated Flipper Zero firmware app designed to control a **BW16 (RTL8720DN)** WiFi module. It allows scanning for WiFi networks (2.4GHz and 5GHz) and performing deauthentication attacks.
