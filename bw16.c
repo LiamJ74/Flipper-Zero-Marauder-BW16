@@ -11,8 +11,8 @@ static void bw16_send_raw(FuriHalSerialHandle* handle, const uint8_t* data, uint
 }
 
 void bw16_send_scan_request(FuriHalSerialHandle* handle) {
-    const uint8_t pkt[] = {0xA1, 0x01};
-    bw16_send_raw(handle, pkt, sizeof(pkt));
+    // Marauder standard text command
+    bw16_send_string(handle, "scanap\n");
 }
 
 void bw16_send_deauth(FuriHalSerialHandle* handle, uint8_t slot) {

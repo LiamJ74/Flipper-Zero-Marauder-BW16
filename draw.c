@@ -27,15 +27,24 @@ void draw_callback(Canvas* canvas, void* ctx) {
         }
 
     } else if(nav->state == NavStateScanning) {
-        canvas_draw_str(canvas, 30, 20, "Scanning...");
+        canvas_draw_str(canvas, 30, 12, "Scanning...");
 
         char buf[64];
-        snprintf(buf, sizeof(buf), "RX: %zu", nav->rx_count);
-        canvas_draw_str(canvas, 30, 32, buf);
+        // Show detected protocol
+        const char* p_str = "UNK";
+        if(nav->wifi_data.protocol == PROTO_REALTEK_AT) p_str = "RTL-AT";
+        if(nav->wifi_data.protocol == PROTO_MARAUDER_CSV) p_str = "MARAUDER";
+        if(nav->wifi_data.protocol == PROTO_MARAUDER_JSON) p_str = "JSON";
 
-        if(nav->wifi_data.list_open) {
+        snprintf(buf, sizeof(buf), "Proto: %s", p_str);
+        canvas_draw_str(canvas, 30, 24, buf);
+
+        snprintf(buf, sizeof(buf), "RX: %zu", nav->rx_count);
+        canvas_draw_str(canvas, 30, 36, buf);
+
+        if(nav->wifi_data.count > 0) {
              snprintf(buf, sizeof(buf), "Found: %zu", nav->wifi_data.count);
-             canvas_draw_str(canvas, 30, 44, buf);
+             canvas_draw_str(canvas, 30, 48, buf);
         }
 
         // Draw last UART line for debug

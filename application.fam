@@ -9,6 +9,6 @@ App(
         "bw16.c",
         "navigation2.c",
         "uart_handler.c",
-        "json_parser.c",
+        "scan_parser.c",
     ],
 )

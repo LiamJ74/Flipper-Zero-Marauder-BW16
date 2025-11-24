@@ -1,6 +1,6 @@
 #include "navigation2.h"
 #include "bw16.h"
-#include "json_parser.h"
+#include "scan_parser.h"
 #include <string.h>
 
 // Simple sorting helper (Bubble Sort for simplicity on small array)
@@ -50,13 +50,16 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
                 // Scan
                 nav->state = NavStateScanning;
                 nav->req_scan = true;
-                nav->wifi_data.count = 0; // Clear list
+                nav->wifi_data.count = 0;
+                nav->wifi_data.scanning = true;
+                nav->wifi_data.protocol = PROTO_UNKNOWN; // Reset protocol
                 nav->scan_start_tick = furi_get_tick();
             } else if(nav->selected_index == 1) {
                 // Last scan
                 nav->state = NavStateScanning; // Use scanning state while waiting data
                 nav->req_last_scan = true;
                 nav->wifi_data.count = 0;
+                nav->wifi_data.scanning = true;
                 nav->scan_start_tick = furi_get_tick();
             } else if(nav->selected_index == 2) {
                 // Debug / Terminal
@@ -191,8 +194,8 @@ void navigation2_update(Navigation2* nav, UartHandler* uart) {
             }
         }
 
-        // JSON Parsing
-        uart_json_receive(&nav->wifi_data, byte);
+        // CSV/Scan Parsing
+        uart_scan_receive(&nav->wifi_data, byte);
 
         // Debug Log append
         if(nav->state == NavStateDebug) {
@@ -233,24 +236,26 @@ void navigation2_update(Navigation2* nav, UartHandler* uart) {
     // The parser handles state. Maybe we just wait for a timeout or user interaction if list is empty.
 
     if(nav->state == NavStateScanning) {
-        bool timeout = (furi_get_tick() - nav->scan_start_tick) > 10000;
-        // Check if list closed (scan finished) OR timeout
-        // Also ensure we at least started receiving something (list_open was true at some point?)
-        // The parser logic sets list_open=true on '[' and false on ']'.
-        // If we receive "[]", list_open goes true then false.
-        // We can check if list_open is false. But initially it is false too.
-        // We need a flag "scan_started_receiving" maybe?
-        // Or just rely on timeout if list is empty.
-        // But if we received ']', list_open is false.
-        // Let's assume if count > 0 and !list_open, we are good.
-        // OR if timeout.
+        uint32_t elapsed = furi_get_tick() - nav->scan_start_tick;
 
-        // Improvement: we can check if we received ANY data?
-        // Let's just use timeout for "0 networks" case, OR if we detect the end of list.
-        // Ideally json_parser sets a "finished" flag.
-        // But for now:
+        // Auto-Detect Strategy: Cycle commands every 2 seconds if no protocol detected
+        if(nav->wifi_data.protocol == PROTO_UNKNOWN) {
+            if(elapsed < 2000) {
+                // Try Realtek AT
+                if(elapsed % 2000 < 100) bw16_send_string(uart->serial, "AT+WSCAN\r\n");
+            } else if(elapsed < 4000) {
+                // Try Marauder
+                if(elapsed % 2000 < 100) bw16_send_string(uart->serial, "scanap\n");
+            } else if(elapsed < 6000) {
+                // Try Generic
+                if(elapsed % 2000 < 100) bw16_send_string(uart->serial, "SCAN\n");
+            }
+        }
 
-        if((!nav->wifi_data.list_open && nav->wifi_data.count > 0) || timeout) {
+        bool timeout = elapsed > 15000;
+        bool scan_finished = (nav->wifi_data.scanning == false) && (nav->wifi_data.count > 0);
+
+        if(scan_finished || timeout) {
              // Sort by RSSI descending
              sort_networks_by_rssi(nav->wifi_data.list, nav->wifi_data.count);
 
