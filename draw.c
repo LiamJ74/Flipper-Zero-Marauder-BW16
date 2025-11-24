@@ -1,9 +1,13 @@
 #include "draw.h"
 #include "navigation2.h"
+#include "app_context.h"
 #include <stdio.h>
 
 void draw_callback(Canvas* canvas, void* ctx) {
-    Navigation2* nav = ctx;
+    App* app = ctx;
+    if(furi_mutex_acquire(app->mutex, 200) != FuriStatusOk) return;
+
+    Navigation2* nav = &app->nav;
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontSecondary);
@@ -14,21 +18,31 @@ void draw_callback(Canvas* canvas, void* ctx) {
         canvas_draw_line(canvas, 0, 14, 127, 14);
         canvas_set_font(canvas, FontSecondary);
 
-        const char* items[] = {"Scan WiFi", "Last Scan"};
+        const char* items[] = {"Scan WiFi", "Last Scan", "Debug / AT"};
         int y = 28;
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < 3; i++) {
             if(nav->selected_index == i) canvas_draw_str(canvas, 2, y, ">");
             canvas_draw_str(canvas, 12, y, items[i]);
             y += 12;
         }
 
     } else if(nav->state == NavStateScanning) {
-        canvas_draw_str(canvas, 30, 30, "Scanning...");
+        canvas_draw_str(canvas, 30, 20, "Scanning...");
+
+        char buf[64];
+        snprintf(buf, sizeof(buf), "RX: %zu", nav->rx_count);
+        canvas_draw_str(canvas, 30, 32, buf);
+
         if(nav->wifi_data.list_open) {
-             char buf[32];
              snprintf(buf, sizeof(buf), "Found: %zu", nav->wifi_data.count);
-             canvas_draw_str(canvas, 30, 42, buf);
+             canvas_draw_str(canvas, 30, 44, buf);
         }
+
+        // Draw last UART line for debug
+        canvas_set_font(canvas, FontSecondary);
+        // Only draw first 20 chars to avoid mess
+        snprintf(buf, sizeof(buf), "%.20s", nav->uart_line);
+        canvas_draw_str(canvas, 2, 55, buf);
 
     } else if(nav->state == NavStateList) {
         canvas_set_font(canvas, FontPrimary);
@@ -77,5 +91,33 @@ void draw_callback(Canvas* canvas, void* ctx) {
         int y = 28;
         if(nav->selected_index == 0) canvas_draw_str(canvas, 2, y, ">");
         canvas_draw_str(canvas, 12, y, opts[0]);
+
+    } else if(nav->state == NavStateDebug) {
+        canvas_set_font(canvas, FontPrimary);
+        canvas_draw_str(canvas, 2, 12, "Terminal Mode");
+        canvas_draw_line(canvas, 0, 14, 127, 14);
+
+        canvas_set_font(canvas, FontSecondary);
+        canvas_draw_str(canvas, 2, 60, "OK:AT UP:Scan");
+
+        // Draw last lines of log buffer
+        // Simple: draw from end? Or wrap?
+        // We have a big string in log_buffer.
+        // Let's find the last few newlines to display just the tail.
+
+        if(nav->log_len > 0) {
+             // Heuristic: Count back 5 lines
+             int lines = 0;
+             char* ptr = &nav->log_buffer[nav->log_len - 1];
+             while(ptr > nav->log_buffer && lines < 5) {
+                 if(*ptr == '\n') lines++;
+                 ptr--;
+             }
+             if(ptr != nav->log_buffer) ptr += 2; // Skip \n
+
+             canvas_draw_str_aligned(canvas, 2, 20, AlignLeft, AlignTop, ptr);
+        }
     }
+
+    furi_mutex_release(app->mutex);
 }
