@@ -9,15 +9,7 @@
 #include "uart_handler.h"
 #include "bw16.h"
 #include "draw.h"
-
-typedef struct {
-    Navigation2 nav;
-    UartHandler uart;
-    FuriMutex* mutex;
-    FuriThread* thread;
-    FuriHalSerialHandle* serial;
-    FuriMessageQueue* event_queue;
-} App;
+#include "app_context.h"
 
 // Input callback pour navigation
 static void input_callback(InputEvent* event, void* ctx) {

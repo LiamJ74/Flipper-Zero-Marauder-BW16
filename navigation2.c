@@ -43,7 +43,7 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
             if(nav->selected_index > 0) nav->selected_index--;
             break;
         case InputKeyDown:
-            if(nav->selected_index < 1) nav->selected_index++;
+            if(nav->selected_index < 2) nav->selected_index++;
             break;
         case InputKeyOk:
             if(nav->selected_index == 0) {
@@ -58,6 +58,11 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
                 nav->req_last_scan = true;
                 nav->wifi_data.count = 0;
                 nav->scan_start_tick = furi_get_tick();
+            } else if(nav->selected_index == 2) {
+                // Debug / Terminal
+                nav->state = NavStateDebug;
+                nav->log_len = 0;
+                nav->log_buffer[0] = '\0';
             }
             break;
         default: break;
@@ -114,21 +119,19 @@ void navigation2_input(Navigation2* nav, InputEvent* event) {
                 // Deauth
                 nav->req_deauth = true;
                 nav->deauth_slot = 0; // The logic for slots is complex, for now assuming direct deauth or need slot mapping.
-                                      // Actually bw16.c uses "slot". If the module expects a slot index from the scan list...
-                                      // Let's try sending the index (nav->selected in List).
-                                      // Wait, we are in Options menu now. We need to remember the network index.
-                                      // But `bw16_send_deauth` takes a `uint8_t slot`.
-                                      // Marauder usually maps BSSIDs to slots implicitly or explicitly.
-                                      // If the scan list from BW16 corresponds to slots 0..N, then we can use the list index.
-                                      // Let's assume list index == slot for now.
-                // We need the index from the list state. Ideally we stored it.
-                // Let's say `current_target` pointer is useful for display, but for action we might need index.
-                // We'll fix this if needed. Let's assume we pass the BSSID or something?
-                // bw16.c sends 0xA2 + slot.
-                // Let's guess the slot is the index in the list provided by BW16.
             }
             break;
         default: break;
+        }
+        break;
+
+    case NavStateDebug:
+        if(event->key == InputKeyBack) {
+            nav->state = NavStateMain;
+        } else if(event->key == InputKeyOk) {
+             nav->req_dbg_at = true;
+        } else if(event->key == InputKeyUp) {
+             nav->req_dbg_scan = true;
         }
         break;
     }
@@ -156,21 +159,57 @@ void navigation2_update(Navigation2* nav, UartHandler* uart) {
         nav->state = NavStateList;
     }
 
+    if(nav->req_dbg_at) {
+        bw16_send_string(uart->serial, "AT\r\n");
+        nav->req_dbg_at = false;
+    }
+    if(nav->req_dbg_scan) {
+        // Try generic Realtek/B&T scan command
+        bw16_send_string(uart->serial, "AT+WSCAN\r\n");
+        nav->req_dbg_scan = false;
+    }
+
     // Lire les données UART disponibles et les parser
     uint8_t byte;
     while(uart_handler_pop(uart, &byte)) {
+        nav->rx_count++;
+
         // Debug buffer
         size_t len = strlen(nav->uart_line);
-        if(len < sizeof(nav->uart_line) - 1) {
-            nav->uart_line[len] = byte;
-            nav->uart_line[len + 1] = '\0';
-        }
         if(byte == '\n' || byte == '\r') {
-            nav->uart_new_data = true; // Trigger refresh
+            // New line handling
+            nav->uart_new_data = true;
+            // Clear line for next packet?
+            // If we clear it here, we might miss displaying it.
+            // Better to clear it at start of new line.
+            // For now, let's just append and clear if full or on newline.
+            if(len > 0) memset(nav->uart_line, 0, sizeof(nav->uart_line));
+        } else {
+            if(len < sizeof(nav->uart_line) - 1) {
+                nav->uart_line[len] = byte;
+                nav->uart_line[len + 1] = '\0';
+            }
         }
 
         // JSON Parsing
         uart_json_receive(&nav->wifi_data, byte);
+
+        // Debug Log append
+        if(nav->state == NavStateDebug) {
+            if(nav->log_len < sizeof(nav->log_buffer) - 2) {
+                nav->log_buffer[nav->log_len] = byte;
+                nav->log_buffer[nav->log_len + 1] = '\0';
+                nav->log_len++;
+            } else {
+                // Scroll: Shift buffer left by half
+                size_t shift = sizeof(nav->log_buffer) / 2;
+                memmove(nav->log_buffer, nav->log_buffer + shift, nav->log_len - shift);
+                nav->log_len -= shift;
+                nav->log_buffer[nav->log_len] = byte;
+                nav->log_buffer[nav->log_len + 1] = '\0';
+                nav->log_len++;
+            }
+        }
     }
 
     // Check if scan finished (list_open went true then false)
